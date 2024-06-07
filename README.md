@@ -2,7 +2,7 @@
 
 Preliminary version of code: https://arxiv.org/html/2401.15203v1.
 
-<div align=center><img src="https://github.com/zaixizhang/FedGT/blob/main/asset/fedgt_model.png" width="700"/></div>
+<div align=center><img src="https://github.com/zaixizhang/FedGT/blob/main/fedgt_model.png" width="700"/></div>
 The framework of FedGT. We use a case with three clients for illustration and omit the model details of Client 2 for simplicity. The node colors indicate the node labels.
 
 ## Requirement
