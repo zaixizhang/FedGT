@@ -37,7 +37,7 @@ $ sh ./scripts/overlapping.sh 0,1 10
 
 ## Citation
 
-If you found the provided code with our paper useful in your work, we kindly request that you cite our work. </br>
+If you found the paper and code useful to you, you can kindly cite our paper. Thanks! </br>
 
 ```BibTex
 @article{zhang2024fedgt,
