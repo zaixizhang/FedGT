@@ -11,9 +11,9 @@ from torch_geometric.utils import to_dense_adj, dense_to_sparse
 from utils import get_data, split_train, torch_save
 
 data_path = '../../../datasets'
-ratio_train = 0.2
+ratio_train = 0.05
 seed = 1234
-clients = [5, 10, 20]
+clients = [10]
 
 random.seed(seed)
 np.random.seed(seed)
@@ -65,4 +65,4 @@ def split_subgraphs(n_clients, data, dataset):
         print(f'client_id: {client_id}, iid, n_train_node: {client_num_nodes}, n_train_edge: {client_num_edges}')
 
 for n_clients in clients:
-    generate_data(dataset='Cora', n_clients=n_clients)
+    generate_data(dataset='Photo', n_clients=n_clients)

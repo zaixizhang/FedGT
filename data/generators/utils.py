@@ -11,7 +11,7 @@ from torch_geometric.utils import to_scipy_sparse_matrix
 from ogb.nodeproppred import PygNodePropPredDataset
 
 def torch_save(base_dir, filename, data):
-    os.makedirs(base_dir, exist_ok=True)
+    os.makedirs(os.path.join(base_dir, os.path.dirname(filename)), exist_ok=True)
     fpath = os.path.join(base_dir, filename)    
     torch.save(data, fpath)
 

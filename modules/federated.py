@@ -27,6 +27,64 @@ class ServerModule:
             for name, params in aggr_theta.items():
                 aggr_theta[name] = np.sum([theta[name] * ratio for j, theta in enumerate(local_weights)], 0)
         return aggr_theta
+    
+    def aggregate_codebook(self, local_codebooks, ratio=None, reorder=None):
+        aggr_codebook = np.sum([theta.numpy()[reorder[j]] * ratio[j] for j, theta in enumerate(local_codebooks)], 0)
+        return aggr_codebook
+
+    @torch.no_grad()
+    def evaluate(self):
+        if not self.args.eval_global:
+            return 0, np.mean([0])
+
+        with torch.no_grad():
+            target, pred, loss = [], [], []
+            for i, batch in enumerate(self.loader.te_loader):
+                batch = batch.cuda(self.gpu_id)
+                y_hat, lss = self.validation_step(batch, batch.test_mask)
+                pred.append(y_hat[batch.test_mask])
+                target.append(batch.y[batch.test_mask])
+                loss.append(lss)
+            acc = self.accuracy(torch.stack(pred).view(-1, self.args.n_clss), torch.stack(target).view(-1))
+        return acc, np.mean(loss)
+
+    @torch.no_grad()
+    def validate(self):
+        if not self.args.eval_global:
+            return 0, np.mean([0])
+
+        with torch.no_grad():
+            target, pred, loss = [], [], []
+            for i, batch in enumerate(self.loader.va_loader):
+                batch = batch.cuda(self.gpu_id)
+                y_hat, lss = self.validation_step(batch, batch.val_mask)
+                pred.append(y_hat[batch.val_mask])
+                target.append(batch.y[batch.val_mask])
+                loss.append(lss)
+            acc = self.accuracy(torch.stack(pred).view(-1, self.args.n_clss), torch.stack(target).view(-1))
+        return acc, np.mean(loss)
+
+    @torch.no_grad()
+    def validation_step(self, batch, mask=None):
+        self.model.eval()
+        y_hat = self.model(batch)
+        if torch.sum(mask).item() == 0: return y_hat, 0.0
+        lss = F.cross_entropy(y_hat[mask], batch.y[mask])
+        return y_hat, lss.item()
+
+    @torch.no_grad()
+    def accuracy(self, preds, targets):
+        if targets.size(0) == 0: return 1.0
+        with torch.no_grad():
+            preds = preds.max(1)[1]
+            acc = preds.eq(targets).sum().item() / targets.size(0)
+        return acc
+
+    def save_log(self):
+        save(self.args.log_path, f'server.txt', {
+            'args': self._args,
+            'log': self.log
+        })
 
 class ClientModule:
     def __init__(self, args, w_id, g_id, sd):
@@ -103,6 +161,8 @@ class ClientModule:
             'args': self._args,
             'log': self.log
         })
+        np.save(os.path.join(self.args.log_path, f'client_{self.client_id}_test.npy'), np.array(self.log['rnd_local_test_acc']))
+        np.save(os.path.join(self.args.log_path, f'client_{self.client_id}_val.npy'), np.array(self.log['rnd_local_val_acc']))
 
     def get_optimizer_state(self, optimizer):
         state = {}
