@@ -48,6 +48,6 @@ If you found the provided code with our paper useful in your work, we kindly req
 }
 ```
 
-## Ack
+## Acknowledgement
 
 This project draws in part from [FED-PUB](https://github.com/JinheonBaek/FED-PUB). Thanks for their great work and code!
