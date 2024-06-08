@@ -1,5 +1,6 @@
 import os
 import torch
+import numpy as np
 
 import torch_geometric.datasets as datasets
 import torch_geometric.transforms as T
@@ -7,6 +8,7 @@ import torch_geometric.transforms as T
 from torch_geometric.data import Data
 from torch_geometric.transforms import BaseTransform
 from torch_geometric.utils import to_scipy_sparse_matrix
+import scipy.sparse as sp
 
 from ogb.nodeproppred import PygNodePropPredDataset
 
@@ -83,3 +85,24 @@ class LargestConnectedComponents(BaseTransform):
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.num_components})'
+
+
+def adj_normalize(mx):
+    "A' = (D + I)^-1/2 * ( A + I ) * (D + I)^-1/2"
+    mx = mx + sp.eye(mx.shape[0])
+    rowsum = np.array(mx.sum(1))
+    r_inv = np.power(rowsum, -0.5).flatten()
+    r_inv[np.isinf(r_inv)] = 0.
+    r_mat_inv = sp.diags(r_inv)
+    mx = r_mat_inv.dot(mx).dot(r_mat_inv)
+    return mx
+
+
+def column_normalize(mx):
+    "A' = A * D^-1 "
+    rowsum = np.array(mx.sum(1))
+    r_inv = np.power(rowsum, -1.0).flatten()
+    r_inv[np.isinf(r_inv)] = 0.
+    r_mat_inv = sp.diags(r_inv)
+    mx = mx.dot(r_mat_inv)
+    return mx
