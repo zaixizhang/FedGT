@@ -15,6 +15,9 @@ def main(args):
     elif args.model == 'fedpub':    
         from models.fedpub.server import Server
         from models.fedpub.client import Client
+    elif args.model == 'fedgt':
+        from models.fedgt.server import Server
+        from models.fedgt.client import Client
     else:
         print('incorrect model was given: {}'.format(args.model))
         os._exit(0)
@@ -35,8 +38,24 @@ def set_config(args):
     if args.dataset == 'Cora':
         args.n_feat = 1433
         args.n_clss = 7
-        args.n_clients = 10 if args.n_clients == None else args.n_clients
-        args.base_lr = 0.01 if args.lr == None else args.lr
+    elif args.dataset == 'CiteSeer':
+        args.n_feat = 3703
+        args.n_clss = 6
+    elif args.dataset == 'PubMed':
+        args.n_feat = 500
+        args.n_clss = 3
+    elif args.dataset == 'Computers':
+        args.n_feat = 767
+        args.n_clss = 10
+    elif args.dataset == 'Photo':
+        args.n_feat = 745
+        args.n_clss = 8
+    elif args.dataset == 'ogbn-arxiv':
+        args.n_feat = 128
+        args.n_clss = 40
+    
+    args.n_clients = 10 if args.n_clients == None else args.n_clients
+    args.base_lr = 0.01 if args.lr == None else args.lr
 
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
     trial = f'{args.dataset}_{args.mode}/clients_{args.n_clients}/{now}_{args.model}'

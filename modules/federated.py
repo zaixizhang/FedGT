@@ -11,6 +11,7 @@ class ServerModule:
         self._args = vars(self.args)
         self.gpu_id = gpu_server
         self.sd = sd
+        self.loader = DataLoader(self.args, is_server=True)
         self.logger = Logger(self.args, self.gpu_id, is_server=True)
 
     def get_active(self, mask):

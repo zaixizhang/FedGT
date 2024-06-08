@@ -16,7 +16,7 @@ Following command lines automatically generate the dataset.
 ```sh
 $ cd data/generators
 $ python disjoint.py
-$ python overlapping.py
+$ python overlap.py
 ```
 
 ## Run 

@@ -65,7 +65,7 @@ class Client(ClientModule):
         self.prev_w = convert_np_to_tensor(update['model'], self.gpu_id)
         set_state_dict(self.model, update['model'], self.gpu_id, skip_stat=True, skip_mask=True)
 
-    def on_round_begin(self, curr_rnd):
+    def on_round_begin(self):
         self.train()
         self.transfer_to_server()
 

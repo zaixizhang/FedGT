@@ -44,9 +44,28 @@ class DataLoader:
     def switch(self, client_id):
         if not self.client_id == client_id:
             self.client_id = client_id
-            self.partition = get_data(self.args, client_id=client_id)
-            self.pa_loader = self.DataLoader(dataset=self.partition, batch_size=1, 
-                shuffle=False, num_workers=self.n_workers, pin_memory=False)
+            self.partition, ppr, power_adj_list = get_data(self.args, mode='partition', client_id=client_id)
+            if self.args.model == 'fedgt':
+                train_mask, val_mask, test_mask = self.partition['train_mask'], self.partition['val_mask'], self.partition['test_mask']
+                self.pa_loader = self.DataLoader(dataset=torch.arange(len(self.partition.y))[train_mask].tolist(), batch_size=self.args.batch_size,
+                                                 shuffle=True, num_workers=self.n_workers, pin_memory=False,
+                                                 collate_fn=partial(collator, feature=self.partition.x,
+                                                 labels=self.partition.y, ppr=ppr, power_adj_list=power_adj_list))
+                self.pa_loader_val = self.DataLoader(dataset=torch.arange(len(self.partition.y))[val_mask].tolist(),
+                                                 batch_size=self.args.batch_size,
+                                                 shuffle=False, num_workers=self.n_workers, pin_memory=False,
+                                                 collate_fn=partial(collator, feature=self.partition.x,
+                                                                    labels=self.partition.y, ppr=ppr,
+                                                                    power_adj_list=power_adj_list))
+                self.pa_loader_test = self.DataLoader(dataset=torch.arange(len(self.partition.y))[test_mask].tolist(),
+                                                     batch_size=self.args.batch_size,
+                                                     shuffle=False, num_workers=self.n_workers, pin_memory=False,
+                                                     collate_fn=partial(collator, feature=self.partition.x,
+                                                                        labels=self.partition.y, ppr=ppr,
+                                                                        power_adj_list=power_adj_list))
+            else:
+                self.pa_loader = self.DataLoader (dataset=[self.partition], batch_size=1,
+                    shuffle=False, num_workers=self.n_workers, pin_memory=False)
             
             if self.args.eval_global:
                 self.test = get_data(self.args, mode='test', client_id=client_id)
@@ -56,13 +75,19 @@ class DataLoader:
                 self.va_loader = self.DataLoader (dataset=self.valid, batch_size=1, 
                     shuffle=False, num_workers=self.n_workers, pin_memory=False)
 
-def get_data(args, client_id):
-    return [
-        torch_load(
-            args.data_path, 
-            f'{args.dataset}_{args.mode}/{args.n_clients}/partition_{client_id}.pt'
-        )['client_data']
-    ]
+def get_data(args, mode, client_id=-1):
+    if mode in ['test', 'val']:
+        data = torch_load(args.data_path, 
+                        f'{args.dataset}_{args.mode}/{args.n_clients}/{mode}.pt')['data']
+        return [data]
+    elif mode in ['partition']:
+        data = torch_load(args.data_path,
+                          f'{args.dataset}_{args.mode}/{args.n_clients}/partition_{client_id}.pt')
+        return data['client_data'], data['ppr'], data['power_adj_list']
+    else:
+        data = torch_load(args.data_path, 
+            f'{args.dataset}_{args.mode}/{args.n_clients}/partition_{client_id}.pt')['client_data']
+        return [data]
     
     
 def collator(items, feature, labels, ppr, power_adj_list):

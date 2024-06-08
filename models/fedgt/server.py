@@ -29,7 +29,6 @@ class Server(ServerModule):
             'rnd_test_acc': [], 'rnd_test_lss': [],
             'best_val_rnd': 0, 'best_val_acc': 0, 'test_acc': 0
         }
-        #self.sd['proxy'] = self.get_proxy_data(args.n_feat)
         self.update_lists = []
         self.sim_matrices = []
 
@@ -37,20 +36,7 @@ class Server(ServerModule):
         self.avg_sim_matrix = np.zeros(shape=(n_connected, n_connected))
         self.codebook = np.zeros(shape=(self.args.num_centroids, self.args.hidden_dim))
 
-    def get_proxy_data(self, n_feat):
-        import networkx as nx
-        from torch_geometric.utils import from_networkx
-
-        num_graphs = self.args.n_proxy
-        num_nodes = 100
-        G = nx.random_partition_graph(
-            [num_nodes] * num_graphs, p_in=0.1, p_out=0, seed=self.args.seed)
-        data = from_networkx(G)
-        data.x = torch.normal(mean=0, std=1, size=(num_nodes * num_graphs, n_feat))
-
-        return data
-
-    def on_round_begin(self, selected, curr_rnd):
+    def on_round_begin(self, curr_rnd):
         self.round_begin = time.time()
         self.curr_rnd = curr_rnd
         self.sd['global'] = self.get_weights()
@@ -70,10 +56,11 @@ class Server(ServerModule):
         self.log['rnd_valid_lss'].append(valid_lss)
         self.log['rnd_test_acc'].append(test_acc)
         self.log['rnd_test_lss'].append(test_lss)
-        self.logger.print(
-            f"rnd:{self.curr_rnd+1}, curr_valid_lss:{valid_lss:.4f}, curr_valid_acc:{valid_acc:.4f}, "
-            f"best_valid_acc:{self.log['best_val_acc']:.4f}, test_acc:{self.log['test_acc']:.4f} ({time.time()-self.round_begin:.2f}s)"
-        )
+        if self.args.eval_global:
+            self.logger.print(
+                f"rnd:{self.curr_rnd+1}, curr_valid_lss:{valid_lss:.4f}, curr_valid_acc:{valid_acc:.4f}, "
+                f"best_valid_acc:{self.log['best_val_acc']:.4f}, test_acc:{self.log['test_acc']:.4f} ({time.time()-self.round_begin:.2f}s)"
+            )
         self.save_log()
 
     def update(self, updated):
@@ -94,17 +81,12 @@ class Server(ServerModule):
         reorder = np.zeros((n_connected, n_connected, self.args.num_centroids), dtype=np.int32)
         for i in range(n_connected):
             for j in range(n_connected):
-                sim_matrix[i, j], reorder[i, j] = alignment_distance(local_weights[i], local_weights[j])
+                sim_matrix[i, j], reorder[i, j] = alignment_distance(local_codebooks[i], local_codebooks[j])
         if self.args.agg_norm == 'exp':
             sim_matrix = np.exp(self.args.norm_scale * sim_matrix)
 
-        if self.args.cluster:
-            for i in range(n_connected):
-                mask = (sim_matrix[i] < sim_matrix[i].mean())
-                sim_matrix[i][mask] = 0
         row_sums = sim_matrix.sum(axis=1)
         sim_matrix = sim_matrix / row_sums[:, np.newaxis]
-        print(sim_matrix)
 
         st = time.time()
         ratio = (np.array(local_train_sizes)/np.sum(local_train_sizes)).tolist()
@@ -114,7 +96,7 @@ class Server(ServerModule):
         st = time.time()
         for i, c_id in enumerate(updated):
             local_ratio = sim_matrix[i, :]
-            aggr_local_model_weights = self.aggregate(local_weights,  ratio=local_ratio, index=i)
+            aggr_local_model_weights = self.aggregate(local_weights,  ratio=local_ratio)
             aggr_local_codebook = self.aggregate_codebook(local_codebooks, ratio=local_ratio, reorder=reorder[i, :])
             if f'adaptive_{c_id}' in self.sd:
                 del self.sd[f'adaptive_{c_id}']

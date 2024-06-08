@@ -6,6 +6,8 @@ import numpy as np
 
 from collections import defaultdict, OrderedDict
 from misc.forked_pdb import ForkedPdb
+from scipy.optimize import linear_sum_assignment
+import torch.nn.functional as F
 
 import torch
 from torch import Tensor
@@ -165,3 +167,24 @@ def from_networkx(G, group_node_attrs=None, group_edge_attrs=None):
         data.num_nodes = G.number_of_nodes()
 
     return data
+
+
+def alignment_distance(a, b):
+    #dX = a.unsqueeze(0) - b.unsqueeze(1)
+    #D = torch.sum(dX ** 2, dim=-1)
+    D = torch.matmul(F.normalize(a, dim=1), F.normalize(b, dim=1).transpose(0, 1))
+    r, c = linear_sum_assignment(1-D)
+    return D[r, r].sum().item()/a.shape[0], r
+
+def alignment_distance2(a,b):
+    a = cat(a)
+    b = cat(b)
+    a/= np.linalg.norm(a)
+    b/= np.linalg.norm(b)
+    return (a*b).sum().item(), np.arange(10)
+
+def cat(a):
+    tmp = []
+    for k, v in a.items():
+        tmp.append(a[k].reshape(-1))
+    return np.concatenate(tmp)
